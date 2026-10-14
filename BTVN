@@ -1,0 +1,44 @@
+# Báo Cáo Bài Tập: Xử Lý Log Máy Chủ Dung Lượng Lớn
+
+## 1. Mục tiêu
+- Vận dụng đúng lệnh đọc tệp tin theo luồng (Stream) để tránh tràn bộ nhớ RAM khi xử lý tệp lớn.
+- Phát hiện lỗi sai cú pháp lệnh và hiểu rõ sự khác biệt giữa công cụ dòng lệnh cũ (CMD) và PowerShell hiện đại.
+
+---
+
+## 2. Bối cảnh & Vấn đề
+- **Tình huống:** Trực hệ thống lúc 12h đêm, cần kiểm tra tệp `server_log_800MB.log` để tìm lỗi.
+- **Sự cố:** 
+  - Đồng nghiệp gõ lệnh `cat server_log_800MB.log` trên Windows CMD dẫn đến lỗi `command not found`.
+  - Mở tệp bằng Notepad khiến hệ thống bị treo cứng giao diện (`Not Responding`) do tràn bộ nhớ RAM.
+
+---
+
+## 3. Phân tích kỹ thuật
+
+### 3.1. Tại sao mở tệp 800MB bằng Notepad lại gây treo máy ("Not Responding")?
+- Các trình soạn thảo giao diện đồ họa (GUI) truyền thống như Notepad hoạt động bằng cách đọc toàn bộ nội dung tệp từ ổ cứng và nạp trực tiếp toàn bộ vào bộ nhớ RAM trước khi hiển thị.
+- Khi tệp có dung lượng lớn (800MB), việc nạp một khối dữ liệu khổng lồ vào RAM khiến tiến trình bị quá tải, đồng thời luồng giao diện chính (UI Thread) bị nghẽn do phải vẽ hàng triệu dòng văn bản lên màn hình, dẫn đến tình trạng "Not Responding".
+
+### 3.2. Tại sao lệnh `cat` bị lỗi trên Windows CMD nhưng hoạt động trong PowerShell?
+- **Môi trường CMD (Command Prompt):** Là trình thông dịch lệnh di sản không tích hợp sẵn lệnh `cat` (lệnh truyền thống của Unix/Linux), do đó CMD báo lỗi không nhận diện được lệnh.
+- **Môi trường PowerShell:** PowerShell là môi trường dòng lệnh hiện đại, trong đó `cat` được thiết lập sẵn như một **Alias (tên viết tắt)** trỏ tới cmdlet chuẩn **`Get-Content`**.
+
+---
+
+## 4. Bộ lệnh PowerShell chuẩn xác
+
+Sử dụng các câu lệnh sau trên **PowerShell** để xử lý tệp log theo cơ chế luồng (Stream) tối ưu hóa bộ nhớ:
+
+
+### 4.1. Xem toàn bộ nội dung tệp (Đọc theo luồng)
+```powershell
+Get-Content -Path .\server_log_800MB.log -ReadCount 1000
+# Hoặc sử dụng alias:
+cat .\server_log_800MB.log
+
+Get-Content -Path .\server_log_800MB.log -Tail 10
+# Hoặc sử dụng alias:
+cat .\server_log_800MB.log -Tail 10
+
+
